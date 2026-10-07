@@ -1,0 +1,27 @@
+# NFL settings. Fewer games per season, so a simpler model and smaller samples.
+league: nfl
+espn_path: football/nfl
+active_months: [8, 9, 10, 11, 12, 1, 2]
+season_months: [[8, 0], [9, 0], [10, 0], [11, 0], [12, 0], [1, 1], [2, 1]]
+game_day_window: ["09:00", "23:59"]
+refresh_minutes: 30
+lock_minutes_before_start: 60
+
+min_games_for_bet: 3
+late_season_games: 16
+key_minutes_share: 0.25       # unused for NFL (no minutes data); QB rule is used instead
+line_move_points: 0.05
+stale_odds_hours: 3
+
+bet_edge: 0.04
+lean_edge: 0.02
+
+home_advantage_elo: 50
+elo_k: 20
+form_window: 4
+use_minutes: false     # no snap counts from ESPN; the QB rule covers injuries instead
+model_kinds: [elo_only, logreg]   # ~270 games a season is too few for boosting
+calibration_games: 150
+
+min_graded_bets: 50
+pass_only_roi: -0.05

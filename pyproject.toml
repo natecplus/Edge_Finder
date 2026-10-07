@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "edge-finder"
+version = "0.1.0"
+description = "ML-powered moneyline picks with plain-English reasons"
+requires-python = ">=3.12"
+
+[tool.setuptools]
+packages = ["edge", "edge.sources"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning", "ignore::UserWarning"]

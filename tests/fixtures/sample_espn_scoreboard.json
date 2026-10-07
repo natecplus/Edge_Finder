@@ -1,0 +1,76 @@
+{
+ "events": [
+  {
+   "id": "401901820",
+   "date": "2026-10-06T23:00Z",
+   "name": "Brooklyn Nets at Charlotte Hornets",
+   "season": {
+    "year": 2027,
+    "type": 1,
+    "slug": "preseason"
+   },
+   "competitions": [
+    {
+     "status": {
+      "type": {
+       "name": "STATUS_FINAL",
+       "completed": true
+      }
+     },
+     "competitors": [
+      {
+       "homeAway": "home",
+       "score": "112",
+       "team": {
+        "abbreviation": "CHA"
+       }
+      },
+      {
+       "homeAway": "away",
+       "score": "105",
+       "team": {
+        "abbreviation": "BKN"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "401901821",
+   "date": "2026-10-07T02:30Z",
+   "name": "Utah Jazz at Golden State Warriors",
+   "season": {
+    "year": 2027,
+    "type": 1,
+    "slug": "preseason"
+   },
+   "competitions": [
+    {
+     "status": {
+      "type": {
+       "name": "STATUS_SCHEDULED",
+       "completed": false
+      }
+     },
+     "competitors": [
+      {
+       "homeAway": "home",
+       "score": "0",
+       "team": {
+        "abbreviation": "GS"
+       }
+      },
+      {
+       "homeAway": "away",
+       "score": "0",
+       "team": {
+        "abbreviation": "UTAH"
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

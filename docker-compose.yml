@@ -1,0 +1,16 @@
+# Two services sharing one data folder:
+#   jobs -> the scheduler (fetches data, makes and grades picks, retrains weekly)
+#   app  -> the Streamlit website on port 8501
+# Start:  docker compose up -d --build      Logs:  docker compose logs -f jobs
+services:
+  jobs:
+    build: .
+    command: python -m edge.jobs
+    volumes: ["./data:/app/data"]
+    restart: unless-stopped
+  app:
+    build: .
+    command: streamlit run app/streamlit_app.py --server.port 8501 --server.address 0.0.0.0 --server.headless true
+    ports: ["8501:8501"]
+    volumes: ["./data:/app/data"]
+    restart: unless-stopped

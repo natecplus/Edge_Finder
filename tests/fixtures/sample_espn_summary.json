@@ -1,0 +1,159 @@
+{
+ "pickcenter": [
+  {
+   "provider": {
+    "name": "DraftKings"
+   },
+   "homeTeamOdds": {
+    "moneyLine": -150
+   },
+   "awayTeamOdds": {
+    "moneyLine": 130
+   },
+   "moneyline": {
+    "home": {
+     "open": {
+      "odds": "-140"
+     },
+     "close": {
+      "odds": "-155"
+     }
+    },
+    "away": {
+     "open": {
+      "odds": "+120"
+     },
+     "close": {
+      "odds": "+135"
+     }
+    }
+   }
+  },
+  {
+   "provider": {
+    "name": "ESPN BET"
+   },
+   "homeTeamOdds": {
+    "moneyLine": "-145"
+   },
+   "awayTeamOdds": {
+    "moneyLine": "+125"
+   }
+  },
+  {
+   "provider": {
+    "name": "Broken Book"
+   },
+   "homeTeamOdds": {
+    "moneyLine": "OFF"
+   },
+   "awayTeamOdds": {}
+  }
+ ],
+ "injuries": [
+  {
+   "team": {
+    "abbreviation": "CHA"
+   },
+   "injuries": [
+    {
+     "athlete": {
+      "displayName": "LaMelo Ball",
+      "position": {
+       "abbreviation": "PG"
+      }
+     },
+     "status": "Out"
+    },
+    {
+     "athlete": {
+      "displayName": "Mark Williams",
+      "position": {
+       "abbreviation": "C"
+      }
+     },
+     "status": "day-to-day"
+    }
+   ]
+  },
+  {
+   "team": {
+    "abbreviation": "BKN"
+   },
+   "injuries": []
+  }
+ ],
+ "boxscore": {
+  "players": [
+   {
+    "team": {
+     "abbreviation": "CHA"
+    },
+    "statistics": [
+     {
+      "labels": [
+       "MIN",
+       "FG",
+       "PTS"
+      ],
+      "athletes": [
+       {
+        "athlete": {
+         "displayName": "Brandon Miller"
+        },
+        "stats": [
+         "34",
+         "9-18",
+         "24"
+        ]
+       },
+       {
+        "athlete": {
+         "displayName": "Miles Bridges"
+        },
+        "stats": [
+         "31:30",
+         "7-15",
+         "19"
+        ]
+       },
+       {
+        "athlete": {
+         "displayName": "LaMelo Ball"
+        },
+        "stats": [],
+        "didNotPlay": true
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "team": {
+     "abbreviation": "BKN"
+    },
+    "statistics": [
+     {
+      "labels": [
+       "MIN",
+       "FG",
+       "PTS"
+      ],
+      "athletes": [
+       {
+        "athlete": {
+         "displayName": "Cam Thomas"
+        },
+        "stats": [
+         "36",
+         "10-22",
+         "28"
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

@@ -1,9 +1,14 @@
+"""Tests against YOUR saved ESPN scoreboard (tests/fixtures/espn_nba_scoreboard.json).
+Skipped if you haven't saved one yet."""
 import json
 from pathlib import Path
+
+import pytest
 
 from edge.sources.espn import EspnSchedule
 
 FIXTURE = Path(__file__).parent / "fixtures" / "espn_nba_scoreboard.json"
+pytestmark = pytest.mark.skipif(not FIXTURE.exists(), reason="no saved ESPN scoreboard fixture")
 
 
 def load_games():

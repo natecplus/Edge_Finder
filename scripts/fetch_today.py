@@ -1,9 +1,15 @@
-from datetime import date
+"""Fetch today's games (and their odds + injuries) into the database.
+
+    python -m scripts.fetch_today            # NBA
+    python -m scripts.fetch_today nfl
+"""
+import sys
 
 from edge import db
-from edge.sources.espn import EspnSchedule
+from edge.ingest import refresh_day
+from edge.timeutil import et_today
 
+league = sys.argv[1] if len(sys.argv) > 1 else "nba"
 db.init()                                  # creates data/edge.db + tables if missing
-games = EspnSchedule().games_on("nba", date.today())
-db.upsert_games(games)
-print(f"Saved {len(games)} games for {date.today()}")
+counts = refresh_day(league, et_today())
+print(f"{league.upper()} {et_today()}: {counts}")

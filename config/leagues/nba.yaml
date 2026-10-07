@@ -1,0 +1,32 @@
+# NBA settings. Adding a league = adding a file like this one.
+league: nba
+espn_path: basketball/nba
+active_months: [10, 11, 12, 1, 2, 3, 4, 5, 6]
+# Months to walk when backfilling a season (ESPN labels a season by its END year).
+season_months: [[10, -1], [11, -1], [12, -1], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [6, 0]]
+game_day_window: ["10:00", "23:59"]   # Eastern time
+refresh_minutes: 30
+lock_minutes_before_start: 60
+
+# Rules
+min_games_for_bet: 5          # below this, best verdict is Lean
+late_season_games: 75         # past this, flag "check motivation"
+key_minutes_share: 0.25       # missing >= 25% of usual minutes -> soft flag
+line_move_points: 0.05        # implied probability moved >= 5 points since open
+stale_odds_hours: 3
+
+# Verdict thresholds (edge in probability points: 0.04 = 4 points)
+bet_edge: 0.04
+lean_edge: 0.02
+
+# Model
+home_advantage_elo: 70
+elo_k: 20
+form_window: 10
+use_minutes: true      # NBA box scores give minutes -> 'missing rotation' feature
+model_kinds: [elo_only, logreg, lgbm]   # candidates; best on validation wins
+calibration_games: 600                  # most recent finished games used to calibrate
+
+# League trust filter
+min_graded_bets: 50
+pass_only_roi: -0.05
