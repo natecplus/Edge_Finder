@@ -1,0 +1,13 @@
+requests
+beautifulsoup4
+lxml
+pandas
+sqlalchemy
+apscheduler
+pyyaml
+scikit-learn
+lightgbm
+shap
+mlflow
+streamlit
+pytest
