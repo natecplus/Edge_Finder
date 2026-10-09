@@ -18,6 +18,9 @@ REGULAR_MINUTES = 10.0     # players averaging fewer minutes don't count as "rot
 def feature_list(cfg: dict, kind: str) -> list[str]:
     if kind == "elo_only":
         return ["elo_diff"]
+    if cfg.get("sport") == "tennis":
+        from edge.tennis_features import TENNIS_FEATURES
+        return list(TENNIS_FEATURES)
     cols = ["elo_diff", "form_diff", "season_margin_diff", "rest_diff", "b2b_home", "b2b_away"]
     if cfg.get("use_minutes"):
         cols += ["miss_home", "miss_away"]
@@ -135,8 +138,11 @@ def upcoming_availability(game_key: str, team: str, start_time: str, minutes: pd
 
 # ------------------------------------------------------------------ main entry
 def build_features(games: pd.DataFrame, cfg: dict, minutes: pd.DataFrame | None = None,
-                   injuries: pd.DataFrame | None = None) -> pd.DataFrame:
+                   injuries: pd.DataFrame | None = None, meta: pd.DataFrame | None = None) -> pd.DataFrame:
     """One row per game with features and (for finished games) the label home_win."""
+    if cfg.get("sport") == "tennis":
+        from edge.tennis_features import build_tennis_features
+        return build_tennis_features(games, cfg, meta)
     games = games.copy()
     games["home_score"] = pd.to_numeric(games.home_score, errors="coerce")
     games["away_score"] = pd.to_numeric(games.away_score, errors="coerce")
@@ -191,6 +197,8 @@ def fill_upcoming_availability(df: pd.DataFrame, cfg: dict, minutes: pd.DataFram
     games (default) or for the given game keys (used when replaying past days,
     so a replayed pick only knows what the injury report said at the time).
     Returns per-game details for the rules engine and the game-detail page."""
+    if cfg.get("sport") == "tennis":
+        return {}                     # no injury reports in tennis: withdrawals remove the match
     log = df.attrs.get("team_log")
     details = {}
     if keys is not None:

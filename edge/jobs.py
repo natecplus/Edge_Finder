@@ -63,6 +63,10 @@ def game_day(league: str | None = None) -> None:
 def retrain(league: str | None = None) -> None:
     for lg in [league] if league else all_leagues():
         log.info("[%s] weekly retrain", lg)
+        if league_config(lg).get("sport") == "tennis":
+            # pull the latest finished matches + closing odds before retraining
+            from edge.tennis_ingest import load_history
+            _safe(load_history, lg, [et_today().year], False)
         result = _safe(train.train_league, lg)
         if result:
             log.info("[%s] model %s promoted=%s", lg, result["version"], result["promoted"])

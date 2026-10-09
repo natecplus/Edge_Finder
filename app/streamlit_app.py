@@ -7,7 +7,8 @@ from datetime import timedelta
 import pandas as pd
 import streamlit as st
 
-from common import STATUS_TEXT, fmt_ml, picks_for, setup, verdict_badge
+from common import (STATUS_TEXT, fmt_ml, is_tennis, matchup, picks_for, setup,
+                    tournament_filter, verdict_badge)
 
 from edge import tracking
 from edge.timeutil import et_date, et_display, et_today
@@ -35,6 +36,7 @@ else:
 
 picks = picks_for(league)
 picks = picks[picks.start_time.map(lambda s: et_date(s) == day)]
+picks = tournament_filter(league, picks)
 if only_bets:
     picks = picks[picks.verdict.isin(["Bet", "Lean"])]
 if picks.empty:
@@ -51,10 +53,13 @@ st.caption(" · ".join(f"{counts.get(v, 0)} {v}" for v in ("Bet", "Lean", "Pass"
 for p in picks.itertuples():
     with st.container(border=True):
         left, mid, right = st.columns([3, 3, 1.3])
-        left.subheader(f"{p.away_team} @ {p.home_team}")
+        left.subheader(matchup(league, p.home_team, p.away_team))
         line = et_display(p.start_time)
+        if is_tennis(league) and isinstance(p.tournament, str):
+            line = f"{p.tournament} · {p.round or ''} · {p.surface or ''} · " + line
         if pd.notna(p.home_score) and pd.notna(p.away_score) and "FINAL" in str(p.status):
-            line += f" · Final {int(p.away_score)}-{int(p.home_score)}"
+            line += (f" · Final {int(p.home_score)}-{int(p.away_score)} sets" if is_tennis(league)
+                     else f" · Final {int(p.away_score)}-{int(p.home_score)}")
         if isinstance(p.locked_at, str):
             line += " · 🔒 locked"
         left.markdown(f'<span class="muted">{line}</span>', unsafe_allow_html=True)
@@ -65,7 +70,10 @@ for p in picks.itertuples():
             mid.markdown(f'<span class="muted">Best price {fmt_ml(p.odds_taken)} at {p.book} · '
                          f'EV ${p.ev:+.2f} per $100</span>', unsafe_allow_html=True)
         else:
-            mid.metric("Home win %", f"{p.home_prob:.0%}", "no odds")
+            mid.metric(f"{p.home_team} win %" if is_tennis(league) else "Home win %",
+                       f"{p.home_prob:.0%}", "no odds yet", delta_color="off")
+            mid.markdown('<span class="muted">Add a price on the Game detail page to get a verdict</span>',
+                         unsafe_allow_html=True)
         right.markdown(verdict_badge(p.verdict), unsafe_allow_html=True)
 
         reasons = [r for r in (p.reasons or "").split("|") if r]

@@ -1,0 +1,40 @@
+# ATP men's singles. Tennis has no home team: the two players are stored in
+# alphabetical order ("home" = first name alphabetically), never winner-first,
+# so the order can't leak the result into training.
+league: atp
+sport: tennis
+espn_path: tennis/atp
+active_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+game_day_window: ["00:00", "23:59"]    # Asian events play overnight Eastern time
+refresh_minutes: 30
+lock_minutes_before_start: 30          # start times are "not before" estimates
+
+# History + closing odds (one Excel file per year, results and Pinnacle/Bet365 prices)
+history_url: "http://www.tennis-data.co.uk/{year}/{year}.xlsx"
+
+# Optional live odds: set ODDS_API_KEY (free tier at the-odds-api.com) to enable.
+# Called at most once per `odds_api_min_hours` to stay inside the free quota.
+odds_api_prefix: tennis_atp
+odds_api_min_hours: 4
+
+# Default tournament shown in the app (substring match). Empty = all.
+default_tournament: Shanghai
+
+min_games_for_bet: 5          # matches the player has played this season
+late_season_games: 9999       # no "nothing to play for" rule in tennis
+key_minutes_share: 1.0        # unused (no minutes data)
+line_move_points: 0.06
+stale_odds_hours: 6
+
+bet_edge: 0.04
+lean_edge: 0.02
+
+home_advantage_elo: 0
+elo_k: 32
+form_window: 10
+use_minutes: false
+model_kinds: [elo_only, logreg, lgbm]
+calibration_games: 800
+
+min_graded_bets: 50
+pass_only_roi: -0.05

@@ -59,6 +59,10 @@ Read this once with the code open. Then you can explain the project in an interv
 
 **Known weakness?** For past games, availability comes from who actually played; for today's games, from the injury report. Late scratches make those differ slightly. It's documented, and fixing it means archiving pregame injury reports over a full season.
 
+**How does tennis differ?** No home team, so the two players are stored alphabetically (storing the winner first would leak the result: a model would learn "player A wins"). Features are overall Elo, surface-specific Elo, ranking ratio, recent win rate, matches in the last 7 days and rest. Names differ between sources ("Alex de Minaur" vs "De Minaur A."), so `players.py` matches them on surname + first initial. The same match can come from ESPN and tennis-data.co.uk, so writes look for the same pair of players within 2 days and reuse that row, but never merge an upcoming match into a finished one.
+
+**Why can you type odds by hand?** Free live tennis odds are scarce. Entering the price you see at your sportsbook gives the same edge calculation without depending on any odds feed.
+
 ## 5. Things to improve next (good "what would you do next" answers)
 
 - Archive real pregame injury reports for a season, then retrain the availability feature on them.

@@ -4,7 +4,10 @@
     python -m scripts.backfill --league nfl --seasons 2021 2022 2023 2024 2025
 
 Season labels follow ESPN: NBA = season END year (2025-26 season is 2026),
-NFL = season START year (2025 season, which ends Feb 2026, is 2025).
+NFL = season START year (2025 season, which ends Feb 2026, is 2025),
+ATP = calendar year (a few seconds per year: one Excel file each).
+
+    python -m scripts.backfill --league atp --seasons 2022 2023 2024 2025 2026
 
 Resumable: every raw response is cached under data/raw/, so after a crash or
 Ctrl+C just run the same command again; finished days are read from disk.
@@ -45,6 +48,14 @@ def main():
     import edge.http
     edge.http.DEFAULT_DELAY = args.delay
     db.init()
+
+    if league_config(args.league).get("sport") == "tennis":
+        # Tennis history comes as one file per year (seasons = calendar years): fast.
+        from edge.tennis_ingest import load_history
+        for year, counts in load_history(args.league, args.seasons, use_cache=False).items():
+            print(f"{args.league.upper()} {year}: {counts}")
+        print("\nDone. Next: python -m scripts.train_model --league", args.league)
+        return
 
     done = set(db.read_sql(
         "SELECT DISTINCT o.game_key FROM odds_snapshots o WHERE o.kind = 'close'").game_key)

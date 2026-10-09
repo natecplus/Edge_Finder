@@ -1,0 +1,163 @@
+{
+ "events": [
+  {
+   "id": "shanghai-2026",
+   "name": "Rolex Shanghai Masters",
+   "date": "2026-10-07T03:00Z",
+   "season": {
+    "year": 2026
+   },
+   "groupings": [
+    {
+     "grouping": {
+      "slug": "mens-singles",
+      "displayName": "Men's Singles"
+     },
+     "competitions": [
+      {
+       "id": "m1",
+       "date": "2026-10-09T04:30Z",
+       "round": {
+        "displayName": "Quarterfinal"
+       },
+       "status": {
+        "type": {
+         "name": "STATUS_FINAL",
+         "completed": true,
+         "detail": "Final"
+        }
+       },
+       "competitors": [
+        {
+         "order": 1,
+         "winner": false,
+         "athlete": {
+          "displayName": "Jannik Sinner"
+         },
+         "linescores": [
+          {
+           "value": 4
+          },
+          {
+           "value": 6
+          },
+          {
+           "value": 5
+          }
+         ]
+        },
+        {
+         "order": 2,
+         "winner": true,
+         "athlete": {
+          "displayName": "Alex de Minaur"
+         },
+         "linescores": [
+          {
+           "value": 6
+          },
+          {
+           "value": 3
+          },
+          {
+           "value": 7
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "m2",
+       "date": "2026-10-09T08:00Z",
+       "round": {
+        "displayName": "Quarterfinal"
+       },
+       "status": {
+        "type": {
+         "name": "STATUS_SCHEDULED",
+         "completed": false
+        }
+       },
+       "competitors": [
+        {
+         "order": 1,
+         "homeAway": "home",
+         "athlete": {
+          "displayName": "Zhizhen Zhang"
+         }
+        },
+        {
+         "order": 2,
+         "homeAway": "away",
+         "athlete": {
+          "displayName": "Carlos Alcaraz"
+         }
+        }
+       ],
+       "odds": [
+        {
+         "provider": {
+          "name": "ESPN BET"
+         },
+         "homeTeamOdds": {
+          "moneyLine": "+450"
+         },
+         "awayTeamOdds": {
+          "moneyLine": "-650"
+         }
+        }
+       ]
+      },
+      {
+       "id": "m3",
+       "date": "2026-10-09T10:00Z",
+       "status": {
+        "type": {
+         "name": "STATUS_SCHEDULED",
+         "completed": false
+        }
+       },
+       "competitors": [
+        {
+         "order": 1,
+         "athlete": {
+          "displayName": "TBD"
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "grouping": {
+      "slug": "mens-doubles",
+      "displayName": "Men's Doubles"
+     },
+     "competitions": [
+      {
+       "id": "d1",
+       "date": "2026-10-09T05:00Z",
+       "status": {
+        "type": {
+         "name": "STATUS_SCHEDULED"
+        }
+       },
+       "competitors": [
+        {
+         "roster": {
+          "displayName": "A / B"
+         }
+        },
+        {
+         "roster": {
+          "displayName": "C / D"
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

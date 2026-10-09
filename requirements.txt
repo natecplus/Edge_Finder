@@ -13,3 +13,4 @@ streamlit>=1.40
 altair
 pytest
 tzdata
+openpyxl

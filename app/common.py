@@ -9,7 +9,7 @@ import pandas as pd            # noqa: E402
 import streamlit as st         # noqa: E402
 
 from edge import db            # noqa: E402
-from edge.config import DATA_DIR, all_leagues   # noqa: E402
+from edge.config import DATA_DIR, all_leagues, league_config   # noqa: E402
 
 VERDICT_COLORS = {"Bet": "#1a7f37", "Lean": "#b58900", "Pass": "#6e7781"}
 STATUS_TEXT = {
@@ -55,9 +55,33 @@ def fmt_ml(ml) -> str:
     return f"+{ml}" if ml > 0 else str(ml)
 
 
+def is_tennis(league: str) -> bool:
+    return league_config(league).get("sport") == "tennis"
+
+
+def matchup(league: str, home: str, away: str) -> str:
+    return f"{home} vs {away}" if is_tennis(league) else f"{away} @ {home}"
+
+
 @st.cache_data(ttl=60)
 def picks_for(league: str) -> pd.DataFrame:
     return db.read_sql(
         "SELECT p.*, g.start_time, g.home_team, g.away_team, g.season_type, g.status, "
-        "g.home_score, g.away_score FROM picks p JOIN games g ON g.game_key = p.game_key "
+        "g.home_score, g.away_score, t.tournament, t.surface, t.round "
+        "FROM picks p JOIN games g ON g.game_key = p.game_key "
+        "LEFT JOIN tennis_meta t ON t.game_key = p.game_key "
         "WHERE p.league = :lg ORDER BY g.start_time", lg=league)
+
+
+def tournament_filter(league: str, picks: pd.DataFrame) -> pd.DataFrame:
+    """Tennis only: pick one tournament (defaults to the league's default_tournament)."""
+    if not is_tennis(league) or picks.empty:
+        return picks
+    names = sorted(t for t in picks.tournament.dropna().unique() if t)
+    if not names:
+        return picks
+    default = league_config(league).get("default_tournament", "")
+    options = ["All tournaments"] + names
+    idx = next((i for i, n in enumerate(options) if default and default.lower() in n.lower()), 0)
+    choice = st.sidebar.selectbox("Tournament", options, index=idx)
+    return picks if choice == "All tournaments" else picks[picks.tournament == choice]

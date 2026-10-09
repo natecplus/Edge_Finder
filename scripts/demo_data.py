@@ -261,6 +261,98 @@ def replay_picks(league, since):
 
 CURRENT = {}
 
+SURFACES = ["Hard", "Clay", "Grass"]
+SHANGHAI = "Rolex Shanghai Masters (demo)"
+
+
+def tennis_demo(now, today):
+    """96 simulated players with surface-specific skill, ~4.8 seasons of matches,
+    and today's 'Shanghai' slate (two matches without odds, to try manual entry)."""
+    from edge.players import ordered
+    from edge.sources.espn_tennis import TennisMatch
+    from edge.tennis_ingest import _write
+
+    surnames = sorted({f"{rng.choice(LAST)}{rng.choice(['', 'son', 'ov', 'ez', 'ini', 'er'])}" for _ in range(400)})
+    players = [f"{n} {chr(65 + i % 26)}." for i, n in enumerate(rng.sample(surnames, 96))]
+    base = {p: rng.gauss(0, 0.55) for p in players}
+    surf = {(p, s): base[p] + rng.gauss(0, 0.25) for p in players for s in SURFACES}
+
+    def rank_of(day_idx):
+        noisy = sorted(players, key=lambda p: -(base[p] + rng.gauss(0, 0.15)))
+        return {p: i + 1 for i, p in enumerate(noisy)}
+
+    matches, odds = [], []
+    start_day = datetime(today.year - 4, 1, 3).date()
+    n_days = (today - start_day).days
+    ranks = rank_of(0)
+    for d in range(n_days + 1):
+        day = start_day + timedelta(days=d)
+        if day.month == 12 or rng.random() < 0.25:
+            continue                               # off-season / rest days
+        if d % 28 == 0:
+            ranks = rank_of(d)
+            for p in players:
+                base[p] += rng.gauss(0, 0.05)
+        doy = day.timetuple().tm_yday
+        s = "Clay" if 95 <= doy <= 160 else "Grass" if 161 <= doy <= 190 else "Hard"
+        days_ago = (today - day).days
+        tournament = SHANGHAI if days_ago <= 4 else f"ATP {s} Event {doy // 7}"
+        if days_ago == 0:
+            continue
+        for a, b in [rng.sample(players, 2) for _ in range(10)]:
+            p_true = 1 / (1 + math.exp(-1.3 * (surf[(a, s)] - surf[(b, s)])))
+            winner, loser = (a, b) if rng.random() < p_true else (b, a)
+            home, away = ordered(a, b)
+            start = to_iso(datetime(day.year, day.month, day.day, 8 + rng.randint(0, 8), tzinfo=ET))
+            sets = {winner: 2, loser: rng.choice([0, 1])}
+            g = Game("atp", None, start, day.year, "regular", home, away, sets[home], sets[away], "STATUS_FINAL")
+            p_home = p_true if home == a else 1 - p_true
+            meta = {"game_key": g.game_key, "tournament": tournament, "series": "ATP", "surface": s,
+                    "round": "Round of 32", "best_of": 3, "home_rank": ranks[home], "away_rank": ranks[away],
+                    "comment": "Completed"}
+            matches.append(TennisMatch(g, meta, []))
+            odds.extend(_tennis_odds(g, p_home, start, final=True))
+
+    # today's Shanghai slate
+    slate = rng.sample(players, 16)
+    for i in range(8):
+        a, b = slate[2 * i], slate[2 * i + 1]
+        home, away = ordered(a, b)
+        start = to_iso(now + timedelta(minutes=75 + 12 * i))
+        p_true = 1 / (1 + math.exp(-1.3 * (surf[(home, "Hard")] - surf[(away, "Hard")])))
+        g = Game("atp", f"demo-t{i}", start, today.year, "regular", home, away, None, None, "STATUS_SCHEDULED")
+        meta = {"game_key": g.game_key, "tournament": SHANGHAI, "series": "Masters 1000", "surface": "Hard",
+                "round": "Quarterfinal" if i < 4 else "Round of 16", "best_of": 3, "comment": "Completed"}
+        if i < 6:                                  # last two: no odds yet -> try manual entry
+            odds.extend(_tennis_odds(g, p_true, start, final=False, live_at=now - timedelta(minutes=15)))
+        matches.append(TennisMatch(g, meta, []))
+
+    print(f"  {_write('atp', matches)}")
+    by_time = {}
+    for snap, when in odds:
+        by_time.setdefault(when, []).append(snap)
+    for when, snaps in by_time.items():
+        db.insert_odds(snaps, captured_at=when)
+    db.log_source_run("demo", "schedule:atp", ok=True, rows=len(matches))
+
+
+def _tennis_odds(g, p_home, start, final, live_at=None):
+    t0 = datetime.fromisoformat(start.replace("Z", "+00:00"))
+    z = logit(min(max(p_home, 0.02), 0.98))
+    out = []
+    for book in BOOKS:
+        snaps = [("open", z + rng.gauss(0, 0.3), t0 - timedelta(hours=18))]
+        zc = z + rng.gauss(0, 0.15)
+        snaps.append(("live", zc, live_at or (t0 - timedelta(hours=2))))
+        if final:
+            snaps.append(("close", zc, t0 - timedelta(minutes=5)))
+        for kind, zz, when in snaps:
+            f = sigmoid(zz + rng.gauss(0, 0.03))
+            o = OddsSnapshot(g.game_key, book, american_from_prob(f * (1 + VIG)),
+                             american_from_prob((1 - f) * (1 + VIG)), kind, "demo")
+            out.append((o, to_iso(when)))
+    return out
+
 
 def main():
     if DEMO_DIR.exists():
@@ -292,13 +384,16 @@ def main():
     todays_slate(nfl, today, now)
     save(nfl)
 
-    for league in ("nba", "nfl"):
+    print("Simulating ATP tennis: ~5 seasons + today's Shanghai slate ...")
+    tennis_demo(now, today)
+
+    for league in ("nba", "nfl", "atp"):
         print(f"\nTraining {league.upper()} ...")
         result = train.train_league(league)
         r = result["report"]
         print(f"  best={r['best_kind']}  test log loss {r['test']['log_loss']:.4f} "
               f"(Elo {r['test_elo_baseline']['log_loss']:.4f}, market {r['market_log_loss']:.4f})")
-        replay_picks(league, now - timedelta(days=42))
+        replay_picks(league, now - timedelta(days=42 if league != "atp" else 21))
         picks = predict.predict_league(league, now=now)
         if not picks.empty:
             print(f"  today: {picks.verdict.value_counts().to_dict()}")

@@ -8,6 +8,7 @@ from dataclasses import replace
 from datetime import date
 
 from edge import db
+from edge.config import league_config
 from edge.sources import (AllSourcesFailed, Game, detail_sources, fetch_with_fallback,
                           odds_backup_sources, schedule_sources)
 from edge.timeutil import parse_utc, utcnow
@@ -59,6 +60,9 @@ def refresh_details(league: str, day: date, games: list[Game], use_cache: bool =
 
 
 def refresh_day(league: str, day: date, use_cache: bool = False, details: bool = True) -> dict:
+    if league_config(league).get("sport") == "tennis":
+        from edge.tennis_ingest import refresh_tennis_day
+        return refresh_tennis_day(league, day, use_cache)
     games = refresh_schedule(league, day, use_cache)
     out = {"games": len(games)}
     if details and games:

@@ -1,6 +1,6 @@
 # Edge Finder
 
-ML-powered moneyline picks. For every NBA and NFL game it estimates each team's win probability with a calibrated model, compares that with what the sportsbook odds imply, and says **Bet, Lean, or Pass** with plain-English reasons. Then it grades itself after every game.
+ML-powered moneyline picks. For every NBA and NFL game and ATP tennis match it estimates each team's win probability with a calibrated model, compares that with what the sportsbook odds imply, and says **Bet, Lean, or Pass** with plain-English reasons. Then it grades itself after every game.
 
 > Model estimates, not guarantees. Personal project; bet only where it's legal for you, within a budget.
 
@@ -63,6 +63,17 @@ python -m edge.jobs                                     # leave running: the ful
 
 Season labels follow ESPN: NBA uses the season's **end** year (2025-26 = 2026), NFL its **start** year.
 
+**Tennis (ATP):**
+
+```powershell
+python -m scripts.backfill --league atp --seasons 2022 2023 2024 2025 2026   # about a minute
+python -m scripts.train_model --league atp
+python -m edge.jobs --once gameday --league atp
+streamlit run app/streamlit_app.py      # pick ATP in the sidebar; Tournament defaults to Shanghai
+```
+
+History and closing odds come from tennis-data.co.uk (one Excel file per year); today's matches from ESPN. Free live tennis odds are thin, so either type a price on the **Game detail** page (the pick recalculates instantly) or set a free [The Odds API](https://the-odds-api.com) key: `$env:ODDS_API_KEY = "your-key"` before starting the scheduler.
+
 ## Project layout
 
 | Path | What it does |
@@ -76,6 +87,7 @@ Season labels follow ESPN: NBA uses the season's **end** year (2025-26 = 2026), 
 | `edge/rules.py`, `edge/predict.py`, `edge/explain.py` | Verdicts, today's picks, SHAP / coefficient reasons. |
 | `edge/grade.py`, `edge/tracking.py` | Grading, ROI, CLV, calibration, league trust status. |
 | `edge/jobs.py` | The scheduler. |
+| `edge/players.py`, `edge/tennis_*.py`, `edge/sources/espn_tennis.py`, `tennis_data.py`, `odds_api.py` | Tennis: name matching across sources, surface Elo / ranking / form / fatigue features, ingest with cross-source de-duplication. |
 | `config/leagues/*.yaml` | Everything league-specific. Adding a league = one YAML + one adapter path. |
 | `app/` | Streamlit pages. |
 | `scripts/` | Backfill, training report, demo data. |
@@ -100,6 +112,7 @@ Backtest at the validation-chosen threshold: … bets, ROI …
 - **Season-based splits only.** Random splits leak the future. The threshold is chosen on the validation season, and the test season is scored once.
 - **The market is the real benchmark.** Beating Elo is easy; getting close to the closing line is not. If no threshold is profitable on validation, every pick is capped at Lean.
 - **Known train/serve gap:** for past games, availability comes from who actually played (box scores); for upcoming games, from the injury report. They differ only for late scratches.
+- **Tennis players are stored alphabetically, never winner-first**, so which column a player is in can't leak the result.
 - **Grading uses locked prices.** Picks lock 60 minutes before start; CLV compares that price with the close.
 
 ## What broke and how I fixed it

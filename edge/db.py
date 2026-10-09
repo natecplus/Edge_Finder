@@ -116,6 +116,21 @@ model_versions = Table(
     Column("report", Text),            # full JSON report
 )
 
+# Tennis-only details (one row per match). A separate table so existing
+# databases don't need a migration.
+tennis_meta = Table(
+    "tennis_meta", meta,
+    Column("game_key", String, primary_key=True),
+    Column("tournament", String),
+    Column("series", String),          # Grand Slam, Masters 1000, ATP500, ATP250, ...
+    Column("surface", String),         # Hard, Clay, Grass
+    Column("round", String),
+    Column("best_of", Integer),
+    Column("home_rank", Integer),      # ATP ranking going into the match
+    Column("away_rank", Integer),
+    Column("comment", String),         # Completed, Retired, Walkover
+)
+
 source_runs = Table(
     "source_runs", meta,
     Column("id", Integer, primary_key=True),
@@ -266,4 +281,23 @@ def injuries_df(league: str) -> pd.DataFrame:
 def minutes_df(league: str) -> pd.DataFrame:
     return read_sql(
         "SELECT m.* FROM player_minutes m JOIN games g ON g.game_key = m.game_key "
+        "WHERE g.league = :lg", lg=league)
+
+
+def upsert_tennis_meta(rows: list[dict]) -> int:
+    """rows: dicts with game_key + any tennis_meta columns. Missing values
+    (None) never overwrite known ones (e.g. ESPN has no ranking)."""
+    with get_engine().begin() as conn:
+        for r in rows:
+            stmt = insert(tennis_meta).values(**r)
+            updates = {c: text(f"COALESCE(excluded.{c}, tennis_meta.{c})")
+                       for c in r if c != "game_key"}
+            conn.execute(stmt.on_conflict_do_update(index_elements=["game_key"], set_=updates)
+                         if updates else stmt.on_conflict_do_nothing())
+    return len(rows)
+
+
+def tennis_meta_df(league: str) -> pd.DataFrame:
+    return read_sql(
+        "SELECT t.* FROM tennis_meta t JOIN games g ON g.game_key = t.game_key "
         "WHERE g.league = :lg", lg=league)
