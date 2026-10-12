@@ -28,7 +28,7 @@ sys.path.insert(0, str(ROOT))
 
 from edge import db, grade, predict, train                        # noqa: E402
 from edge.odds_math import american_from_prob                     # noqa: E402
-from edge.sources.base import Game, InjuryReport, OddsSnapshot, PlayerMinutes  # noqa: E402
+from edge.sources.base import Game, InjuryReport, OddsSnapshot, PlayerLine, PlayerMinutes  # noqa: E402
 from edge.teams import NBA, NFL                                   # noqa: E402
 from edge.timeutil import ET, et_date, to_iso, utcnow             # noqa: E402
 
@@ -68,6 +68,14 @@ class Team:
         self.qb = f"{rng.choice(FIRST)} {rng.choice(LAST)} ({code})"
         self.qb_out = 0
         self.last_game = None
+        # NBA box-score flavour: positions, per-minute production, and how this
+        # team defends each position (1.10 = allows 10% more than average)
+        self.positions = ["G", "G", "F", "F", "C", "G", "F", "C", "G", "F"]
+        base = {"G": (0.46, 0.12, 0.17, 0.07), "F": (0.43, 0.19, 0.08, 0.05), "C": (0.42, 0.30, 0.06, 0.01)}
+        self.rates = [dict(zip(("pts", "reb", "ast", "fg3m"),
+                               (b * max(rng.gauss(1.25 if i < 3 else 1.0, 0.18), 0.4) for b in base[pos])))
+                      for i, pos in enumerate(self.positions)]
+        self.dvp = {g: {st: max(rng.gauss(1, 0.09), 0.7) for st in ("pts", "reb", "ast", "fg3m")} for g in "GFC"}
 
     def new_season(self):
         self.strength = 0.6 * self.strength + 0.52 * rng.gauss(0, 1)
@@ -94,7 +102,7 @@ class Sim:
         self.league = league
         codes = list((NBA if league == "nba" else NFL).keys())
         self.teams = {c: Team(c, league) for c in codes}
-        self.games, self.odds, self.minutes, self.injuries = [], [], [], []
+        self.games, self.odds, self.minutes, self.injuries, self.lines = [], [], [], [], []
         self.sd = 12.0 if league == "nba" else 13.5
         self.home_pts = 2.5 if league == "nba" else 1.8
 
@@ -127,12 +135,17 @@ class Sim:
             g.status = "STATUS_FINAL"
             h.last_game = a.last_game = day
             if self.league == "nba":
-                for t in (h, a):
+                for t, opp in ((h, a), (a, h)):
                     avail = [i for i, d in enumerate(t.injured_for) if d == 0]
                     scale = 240 / sum(BASE_MINUTES[i] for i in avail)
                     for i, name in enumerate(t.players):
-                        mins = BASE_MINUTES[i] * scale + rng.gauss(0, 2) if i in avail else 0.0
-                        self.minutes.append(PlayerMinutes(key, t.code, name, max(mins, 0.0)))
+                        mins = max(BASE_MINUTES[i] * scale + rng.gauss(0, 2), 0.0) if i in avail else 0.0
+                        self.minutes.append(PlayerMinutes(key, t.code, name, mins))
+                        pos = t.positions[i]
+                        st = {k: max(r * mins * opp.dvp[pos][k] * rng.gauss(1, 0.25), 0)
+                              for k, r in t.rates[i].items()}
+                        self.lines.append(PlayerLine(key, t.code, name, pos, mins, round(st["pts"]),
+                                                     round(st["reb"]), round(st["ast"]), round(st["fg3m"])))
         if final:
             # pregame injury report, 3 hours before the game
             report_time = to_iso(datetime.fromisoformat(start.replace("Z", "+00:00")) - timedelta(hours=3))
@@ -224,6 +237,40 @@ def todays_slate(sim, today, now):
                              to_iso(now - timedelta(minutes=10))))
 
 
+def next_week(sim, today):
+    """The coming 7 days: scheduled games, no results (odds appear closer to game day)."""
+    codes = list(sim.teams)
+    label = CURRENT[sim.league]
+    for i in range(1, 8):
+        day = today + timedelta(days=i)
+        if sim.league == "nba":
+            rng.shuffle(codes)
+            for j in range(0, 12, 2):
+                sim.play(codes[j], codes[j + 1], at_et(day, rng.choice([19, 20, 22])), label, "regular", day, final=False)
+        elif day.weekday() in (3, 6, 0):                 # Thu, Sun, Mon
+            rng.shuffle(codes)
+            n = 26 if day.weekday() == 6 else 2
+            for j in range(0, n, 2):
+                hour = 20 if day.weekday() != 6 else rng.choice([13, 13, 16])
+                sim.play(codes[j], codes[j + 1], at_et(day, hour), label, "regular", day, final=False)
+
+
+def nfl_matchup_files(today):
+    """Synthetic nflverse play-by-play + coverage charting for the Matchups page."""
+    from edge.matchups_nfl import default_seasons
+    from edge.sources import nflverse
+    from edge.synthetic_nfl import generate
+    seasons = default_seasons()
+    data = generate(seasons)
+    nflverse.DIR.mkdir(parents=True, exist_ok=True)
+    for s in seasons:
+        pbp = data["pbp"][data["pbp"].season == s]
+        pbp.to_parquet(nflverse.path("pbp", s), index=False)
+        part = data["participation"][data["participation"].nflverse_game_id.str.startswith(f"{s}_")]
+        part.to_parquet(nflverse.path("participation", s), index=False)
+        data["roster"][data["roster"].season == s].to_parquet(nflverse.path("roster", s), index=False)
+
+
 def save(sim):
     db.upsert_games(sim.games)
     by_time = {}
@@ -232,6 +279,7 @@ def save(sim):
     for when, snaps in by_time.items():
         db.insert_odds(snaps, captured_at=when)
     db.upsert_minutes(sim.minutes)
+    db.upsert_player_stats(sim.lines)
     inj = {}
     for rep, when in sim.injuries:
         inj.setdefault(when, []).append(rep)
@@ -370,6 +418,7 @@ def main():
     # demo pretends the current season tipped off 45 days ago
     nba_season(nba, this_label, today - timedelta(days=45), 45)
     todays_slate(nba, today, now)
+    next_week(nba, today)
     save(nba)
 
     print("Simulating NFL: 5 past seasons + current season ...")
@@ -382,7 +431,9 @@ def main():
     CURRENT["nfl"] = this_nfl
     nfl_season(nfl, this_nfl, today - timedelta(days=(today.weekday() + 1) % 7 + 35), 5)
     todays_slate(nfl, today, now)
+    next_week(nfl, today)
     save(nfl)
+    nfl_matchup_files(today)
 
     print("Simulating ATP tennis: ~5 seasons + today's Shanghai slate ...")
     tennis_demo(now, today)
@@ -394,6 +445,8 @@ def main():
         print(f"  best={r['best_kind']}  test log loss {r['test']['log_loss']:.4f} "
               f"(Elo {r['test_elo_baseline']['log_loss']:.4f}, market {r['market_log_loss']:.4f})")
         replay_picks(league, now - timedelta(days=42 if league != "atp" else 21))
+        for i in range(1, 8):                     # next week: model win % (no odds yet)
+            predict.predict_league(league, day=today + timedelta(days=i), now=now)
         picks = predict.predict_league(league, now=now)
         if not picks.empty:
             print(f"  today: {picks.verdict.value_counts().to_dict()}")

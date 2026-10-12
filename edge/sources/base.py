@@ -70,11 +70,26 @@ class PlayerMinutes:
 
 
 @dataclass
+class PlayerLine:
+    """One player's box-score line (NBA), used for defense-vs-position matchups."""
+    game_key: str
+    team: str
+    player: str
+    position: str            # ESPN: G, F, C, PG, SG, SF, PF, G-F, F-C
+    minutes: float
+    pts: float = 0
+    reb: float = 0
+    ast: float = 0
+    fg3m: float = 0
+
+
+@dataclass
 class GameDetail:
     """Everything one game-summary request gives us."""
     odds: list[OddsSnapshot] = field(default_factory=list)
     injuries: list[InjuryReport] = field(default_factory=list)
     minutes: list[PlayerMinutes] = field(default_factory=list)
+    lines: list[PlayerLine] = field(default_factory=list)
 
 
 class ScheduleSource(ABC):

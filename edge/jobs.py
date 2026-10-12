@@ -47,6 +47,10 @@ def nightly(league: str | None = None) -> None:
         log.info("[%s] graded %s picks", lg, n)
         _safe(ingest.refresh_day, lg, today)          # today's schedule, opening odds, injuries
         _safe(predict.predict_league, lg)
+        # the week ahead: schedule + model win % (verdicts firm up once odds appear)
+        _safe(ingest.refresh_upcoming, lg, 7)
+        for i in range(1, 8):
+            _safe(predict.predict_league, lg, today + timedelta(days=i))
 
 
 def game_day(league: str | None = None) -> None:
@@ -72,15 +76,29 @@ def retrain(league: str | None = None) -> None:
             log.info("[%s] model %s promoted=%s", lg, result["version"], result["promoted"])
 
 
+def matchup_data() -> None:
+    """Tuesdays: re-download this season's NFL play-by-play + coverage charting
+    (nflverse refreshes it after each week's games)."""
+    try:
+        from edge.matchups_nfl import default_seasons
+        from scripts.load_matchup_data import load_nfl
+        load_nfl(default_seasons()[-1:])
+    except Exception:  # noqa: BLE001
+        log.exception("matchup data refresh failed")
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     parser = argparse.ArgumentParser()
-    parser.add_argument("--once", choices=["nightly", "gameday", "retrain"])
+    parser.add_argument("--once", choices=["nightly", "gameday", "retrain", "matchups"])
     parser.add_argument("--league")
     args = parser.parse_args()
     db.init()
 
     if args.once:
+        if args.once == "matchups":
+            matchup_data()
+            return
         {"nightly": nightly, "gameday": game_day, "retrain": retrain}[args.once](args.league)
         return
 
@@ -88,6 +106,7 @@ def main() -> None:
     sched.add_job(nightly, "cron", hour=5, minute=0, misfire_grace_time=3600)
     sched.add_job(game_day, "cron", minute="*/30", misfire_grace_time=600, max_instances=1)
     sched.add_job(retrain, "cron", day_of_week="mon", hour=4, minute=0, misfire_grace_time=3600)
+    sched.add_job(matchup_data, "cron", day_of_week="tue", hour=6, minute=0, misfire_grace_time=3600)
     log.info("Scheduler started. Leagues: %s", ", ".join(all_leagues()))
     sched.start()
 

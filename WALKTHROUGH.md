@@ -63,10 +63,15 @@ Read this once with the code open. Then you can explain the project in an interv
 
 **Why can you type odds by hand?** Free live tennis odds are scarce. Entering the price you see at your sportsbook gives the same edge calculation without depending on any odds feed.
 
+**How do the player matchups work?** NFL: from free nflverse play-by-play with FTN charting (man/zone, coverage type, route, pressure on each play), every defense gets a profile and every receiver a yards-per-target split vs man and vs zone. A receiver's matchup = (his man/zone splits weighted by how often this defense plays each, compared with an average defense) x (yards per target this defense allows to his position, compared with league average). Splits are shrunk toward his overall average with ~25 pseudo-targets, so a hot 8-target sample can't dominate. NBA: what each defense allows per 36 minutes to guards, forwards and centers over its last 20 games, vs league average, applied to the player's recent per-minute production and expected minutes.
+
+**Is it predictive?** `scripts/evaluate_matchups.py` rebuilds each past week's report using only earlier data and compares it with what happened (correlation of the edge with actual vs baseline, and whether the matchup projection misses by less than the plain baseline). Report those numbers, good or bad.
+
 ## 5. Things to improve next (good "what would you do next" answers)
 
 - Archive real pregame injury reports for a season, then retrain the availability feature on them.
 - Add player ratings (e.g. from nba_api) so an absence is weighted by quality, not only minutes.
 - Use nflverse data for NFL history and add a QB-quality feature.
 - Line shopping across more books (needs a paid odds source).
+- Player prop lines (typed in, or a paid odds feed) to turn matchup edges into Over/Under leans.
 - Post daily Bets to your Discord with a webhook from `jobs.nightly`.

@@ -11,7 +11,7 @@ from edge.http import get_json
 from edge.teams import normalize
 from edge.timeutil import parse_utc, to_iso
 from .base import (DetailSource, Game, GameDetail, InjuryReport, OddsSnapshot,
-                   PlayerMinutes, ScheduleSource)
+                   PlayerLine, PlayerMinutes, ScheduleSource)
 
 BASE = "https://site.api.espn.com/apis/site/v2/sports"
 SEASON_TYPES = {1: "preseason", 2: "regular", 3: "postseason", 4: "offseason"}
@@ -117,6 +117,7 @@ class EspnDetail(DetailSource):
             odds=self._odds(game, data),
             injuries=self._injuries(game, data),
             minutes=self._minutes(game, data) if game.is_final else [],
+            lines=self.player_lines(game, data) if game.is_final else [],
         )
 
     # ---- odds -------------------------------------------------------------
@@ -155,6 +156,41 @@ class EspnDetail(DetailSource):
                     position=((athlete.get("position") or {}).get("abbreviation") or ""),
                     source=self.name,
                 ))
+        return out
+
+    # ---- box score stat lines (NBA) ---------------------------------------
+    def player_lines(self, game: Game, data: dict) -> list[PlayerLine]:
+        """MIN, PTS, REB, AST and 3-pointers made for every player, plus position."""
+        out = []
+        for team_block in (data.get("boxscore") or {}).get("players") or []:
+            team = normalize(game.league, (team_block.get("team") or {}).get("abbreviation", ""))
+            for group in team_block.get("statistics") or []:
+                labels = [str(x).upper() for x in group.get("labels") or group.get("names") or []]
+                if "MIN" not in labels or "PTS" not in labels:
+                    continue
+                col = {lab: i for i, lab in enumerate(labels)}
+                for a in group.get("athletes") or []:
+                    stats = a.get("stats") or []
+                    athlete = a.get("athlete") or {}
+
+                    def num(label, made=False):
+                        i = col.get(label)
+                        if i is None or i >= len(stats):
+                            return 0.0
+                        v = str(stats[i])
+                        if made:                       # "3-7" -> 3
+                            v = v.split("-")[0]
+                        try:
+                            return float(v)
+                        except ValueError:
+                            return 0.0
+
+                    mins = 0.0 if a.get("didNotPlay") else (_minutes(stats[col["MIN"]]) if col["MIN"] < len(stats) else 0.0) or 0.0
+                    out.append(PlayerLine(
+                        game.game_key, team, athlete.get("displayName", "unknown"),
+                        (athlete.get("position") or {}).get("abbreviation", ""), mins,
+                        pts=num("PTS"), reb=num("REB"), ast=num("AST"), fg3m=num("3PT", made=True)))
+                break
         return out
 
     # ---- box score minutes (NBA) -----------------------------------------

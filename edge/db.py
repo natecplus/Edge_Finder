@@ -60,6 +60,16 @@ player_minutes = Table(
     UniqueConstraint("game_key", "team", "player"),
 )
 
+player_stats = Table(
+    "player_stats", meta,
+    Column("id", Integer, primary_key=True),
+    Column("game_key", String, nullable=False, index=True),
+    Column("team", String), Column("player", String), Column("position", String),
+    Column("minutes", Float), Column("pts", Float), Column("reb", Float),
+    Column("ast", Float), Column("fg3m", Float),
+    UniqueConstraint("game_key", "team", "player"),
+)
+
 picks = Table(
     "picks", meta,
     Column("id", Integer, primary_key=True),
@@ -301,3 +311,21 @@ def tennis_meta_df(league: str) -> pd.DataFrame:
     return read_sql(
         "SELECT t.* FROM tennis_meta t JOIN games g ON g.game_key = t.game_key "
         "WHERE g.league = :lg", lg=league)
+
+
+def upsert_player_stats(lines) -> int:
+    lines = list(lines)
+    with get_engine().begin() as conn:
+        for ln in lines:
+            values = asdict(ln)
+            stmt = insert(player_stats).values(**values)
+            conn.execute(stmt.on_conflict_do_update(
+                index_elements=["game_key", "team", "player"],
+                set_={k: stmt.excluded[k] for k in values if k not in ("game_key", "team", "player")}))
+    return len(lines)
+
+
+def player_stats_df(league: str) -> pd.DataFrame:
+    return read_sql(
+        "SELECT s.*, g.start_time, g.season, g.season_type, g.home_team, g.away_team "
+        "FROM player_stats s JOIN games g ON g.game_key = s.game_key WHERE g.league = :lg", lg=league)

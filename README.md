@@ -74,6 +74,21 @@ streamlit run app/streamlit_app.py      # pick ATP in the sidebar; Tournament de
 
 History and closing odds come from tennis-data.co.uk (one Excel file per year); today's matches from ESPN. Free live tennis odds are thin, so either type a price on the **Game detail** page (the pick recalculates instantly) or set a free [The Odds API](https://the-odds-api.com) key: `$env:ODDS_API_KEY = "your-key"` before starting the scheduler.
 
+## Next week + player matchups
+
+The nightly job now loads the **next 7 days** of games for every league (pick a date in the sidebar, or use **Settings → Load next 7 days**). The **Matchups** page shows, for NFL and NBA games in that window, which players have the edge against the defense they face:
+
+- **NFL** (free nflverse play-by-play + FTN coverage charting): man vs zone rate and most-used coverages (Cover 1/2/3/4/6), pressure rate, yards per target allowed to WRs/TEs/RBs, yards per carry, and yards allowed on each route. Receivers are scored on scheme fit (their man/zone splits x how often this defense plays each) and position weakness; RBs on run defense; QBs on pass defense, scheme and pressure.
+- **NBA** (ESPN box scores): points/rebounds/assists/3s each defense allows to guards, forwards and centers over its last 20 games vs league average.
+
+```powershell
+python -m scripts.load_matchup_data --league nfl        # nflverse files, a few minutes
+python -m scripts.load_matchup_data --league nba        # re-reads saved ESPN box scores
+python -m scripts.evaluate_matchups --league nfl --weeks 6   # walk-forward: did the scores track reality?
+```
+
+Small samples are shrunk toward average and last season counts at 35% weight, so the report works early in the season. It's a scouting report, not a betting model; the evaluate script measures how well it has tracked actual results.
+
 ## Project layout
 
 | Path | What it does |
@@ -88,6 +103,7 @@ History and closing odds come from tennis-data.co.uk (one Excel file per year); 
 | `edge/grade.py`, `edge/tracking.py` | Grading, ROI, CLV, calibration, league trust status. |
 | `edge/jobs.py` | The scheduler. |
 | `edge/players.py`, `edge/tennis_*.py`, `edge/sources/espn_tennis.py`, `tennis_data.py`, `odds_api.py` | Tennis: name matching across sources, surface Elo / ranking / form / fatigue features, ingest with cross-source de-duplication. |
+| `edge/matchups.py`, `edge/matchups_nfl.py`, `edge/matchups_nba.py`, `edge/sources/nflverse.py` | Player matchup reports: coverage/scheme fit and defense vs position. |
 | `config/leagues/*.yaml` | Everything league-specific. Adding a league = one YAML + one adapter path. |
 | `app/` | Streamlit pages. |
 | `scripts/` | Backfill, training report, demo data. |

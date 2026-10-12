@@ -14,3 +14,4 @@ altair
 pytest
 tzdata
 openpyxl
+pyarrow

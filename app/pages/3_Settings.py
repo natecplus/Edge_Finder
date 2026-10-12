@@ -60,7 +60,24 @@ else:
 
 st.divider()
 st.subheader("Run now")
-c1, c2 = st.columns(2)
+c1, c2, c3 = st.columns(3)
+if c3.button("Load next 7 days"):
+    from datetime import timedelta
+    from edge import ingest, predict
+    from edge.timeutil import et_today
+    with st.spinner("Fetching the week's schedule..."):
+        counts = ingest.refresh_upcoming(league, 7)
+        for i in range(1, 8):
+            predict.predict_league(league, day=et_today() + timedelta(days=i))
+    st.cache_data.clear()
+    st.success(f"Games per day: {counts}")
+if league in ("nfl", "nba") and st.button("Refresh matchup data"):
+    from scripts.load_matchup_data import load_nba, load_nfl
+    from edge.matchups_nfl import default_seasons
+    with st.spinner("Downloading play-by-play..." if league == "nfl" else "Reading box scores..."):
+        load_nfl(default_seasons()) if league == "nfl" else load_nba(False)
+    st.cache_resource.clear()
+    st.success("Matchup data refreshed.")
 if c1.button("Refresh today's games + picks"):
     from edge import jobs
     with st.spinner("Fetching odds and injuries..."):

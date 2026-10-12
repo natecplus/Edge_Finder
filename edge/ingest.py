@@ -44,6 +44,7 @@ def refresh_details(league: str, day: date, games: list[Game], use_cache: bool =
             counts["injuries"] += db.insert_injuries(detail.injuries)
         if game.is_final:
             counts["minutes"] += db.upsert_minutes(detail.minutes)
+            db.upsert_player_stats(detail.lines)
         if not detail.odds and not started:
             counts["missing_odds"].append(game.game_key)
 
@@ -74,4 +75,25 @@ def refresh_day(league: str, day: date, use_cache: bool = False, details: bool =
         games = [g if g.source_id else replace(g, source_id=ids.get(g.game_key)) for g in games]
         with_ids = [g for g in games if g.source_id]
         out.update(refresh_details(league, day, with_ids, use_cache))
+    return out
+
+
+def refresh_upcoming(league: str, days: int = 7, start: date | None = None) -> dict:
+    """Schedule for the next `days` days (no odds yet: books post most lines
+    closer to game day, and the game-day refresh picks them up)."""
+    from datetime import timedelta
+    from edge.timeutil import et_today
+    start = start or et_today()
+    out = {}
+    for i in range(1, days + 1):
+        day = start + timedelta(days=i)
+        try:
+            if league_config(league).get("sport") == "tennis":
+                from edge.tennis_ingest import refresh_tennis_day
+                out[str(day)] = refresh_tennis_day(league, day).get("games", 0)
+            else:
+                out[str(day)] = len(refresh_schedule(league, day))
+        except AllSourcesFailed as e:
+            log.warning("upcoming %s %s failed: %s", league, day, e)
+            out[str(day)] = "failed"
     return out
